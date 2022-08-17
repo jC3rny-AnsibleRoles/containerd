@@ -1,0 +1,17 @@
+---
+# [ containerd - handlers ]
+
+- name: Restart containerd service
+  systemd:
+    name: containerd
+    enabled: yes
+    masked: no
+    state: restarted
+
+- name: Reload containerd service
+  systemd:
+    name: containerd
+    enabled: yes
+    masked: no
+    state: restarted
+    daemon_reload: yes

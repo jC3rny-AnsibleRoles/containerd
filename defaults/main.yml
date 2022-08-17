@@ -1,0 +1,26 @@
+---
+# [ containerd - defaults ]
+
+# containerd
+containerd_arch: "amd64"
+containerd_version: ""
+containerd_root_directory: "/var/lib/containerd"
+containerd_service_environment: {}
+  # additional environment variables
+  # HTTP_PROXY: "http://example.local:8080"
+  # HTTPS_PROXY: "http://example.local:8080"
+  # NO_PROXY: "localhost,127.0.0.0/8,::1"
+
+
+# runc
+containerd_runc_version: ""
+
+
+# CNI plugins
+containerd_cni_plugins_version: ""
+
+
+# Sysctl params
+containerd_sysctl_params:
+  - { name: vm.overcommit_memory, value: 1 }
+  - { name: vm.swappiness, value: 0 }

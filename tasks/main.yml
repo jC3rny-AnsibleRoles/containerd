@@ -1,0 +1,80 @@
+---
+# [ containerd - tasks ]
+
+# Set containerd sysctl params
+- name: Set containerd sysctl params
+  sysctl:
+    sysctl_file: /etc/sysctl.d/81-containerd.conf
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  with_items: "{{ containerd_sysctl_params }}"
+  when: containerd_sysctl_params != []
+  tags: [ install-containerd, set-containerd_sysctl_params ]
+
+
+# Install containerd
+- name: Install containerd
+  include_tasks:
+    file: "roles/{{ role_name }}/tasks/containerd_packages.yml"
+  tags:
+    - install-containerd_packages
+    - upgrade-containerd_packages
+    - install-containerd_binaries
+    - upgrade-containerd_binaries
+    - install-containerd_runc_binary
+    - upgrade-containerd_runc_binary
+    - install-containerd_cni_plugins
+    - upgrade-containerd_cni_plugins
+
+
+# Apply containerd default configuration
+- block:
+  - name: Set containerd default configuration
+    file:
+      path: /etc/containerd
+      state: directory
+    changed_when: no
+
+  - template:
+      src: "containerd/config.toml.j2"
+      dest: "/etc/containerd/config.toml"
+    notify: Restart containerd service
+
+  tags: [ containerd-install, apply-containerd_config_template ]
+
+
+# Override systemd settings for containerd service
+- block: 
+  - name: Override systemd settings for containerd service
+    file:
+      path: /etc/systemd/system/containerd.service.d
+      state: directory
+    changed_when: no
+
+  - template:
+      src: "systemd/environment.conf.j2"
+      dest: "/etc/systemd/system/containerd.service.d/environment.conf"
+    notify: Reload containerd service
+  
+  when: containerd_service_environment != {}
+  tags: [ install-containerd, set-containerd_service ]
+
+- meta: flush_handlers
+
+
+# Notify handlers
+- name: Notify handler - Restart containerd service
+  debug: msg="Notify handler"
+  notify: Restart containerd service
+  changed_when: true
+  tags: [ never, notify-handler_restart_containerd_service, notify-handlers_role_containerd, notify-handlers_all  ]
+
+- name: Notify handler - Reload containerd service
+  debug: msg="Notify handler"
+  notify: Reload containerd service
+  changed_when: true
+  tags: [ never, notify-handler_reload_containerd_service, notify-handlers_role_containerd, notify-handlers_all  ]
+
+- meta: flush_handlers

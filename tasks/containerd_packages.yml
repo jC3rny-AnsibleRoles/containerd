@@ -1,0 +1,109 @@
+---
+# [ containerd - tasks/containerd_packages.yml ]
+
+# containerd packages
+- block:
+  - name: Get containerd latest version
+    shell: curl -sSL https://github.com/containerd/containerd/releases/latest | grep -o 'href="/containerd/containerd/releases/tag/.*" ' | awk -F '/' '{ print substr($NF, 1, length($NF)-2) }'
+    register: containerd_latest_version
+    changed_when: no
+  
+  - set_fact:
+      containerd_version: "{{ containerd_latest_version.stdout }}"
+
+  when: containerd_version == ""
+  tags: [ install-containerd_packages, upgrade-containerd_packages, install-containerd_binaries, upgrade-containerd_binaries ]
+
+# Check containerd packages
+- name: Check containerd packages
+  stat: path="/usr/local/bin/containerd"
+  register: containerd_binary
+  tags: [ install-containerd_packages, upgrade-containerd_packages, install-containerd_binaries, upgrade-containerd_binaries ]
+
+# Install containerd
+- block:
+  - name: Download containerd packages
+    unarchive:
+      src: "https://github.com/containerd/containerd/releases/download/{{ containerd_version }}/containerd-{{ containerd_version | regex_replace('^v', '') }}-linux-{{ containerd_arch }}.tar.gz"
+      dest: "/usr/local"
+      remote_src: yes
+    notify: Restart containerd service
+
+  - name: Check containerd service directory
+    file:
+      path: "/usr/local/lib/systemd/system"
+      state: directory
+      recurse: yes
+    changed_when: no
+    register: containerd_service_directory
+    
+  - name: Download containerd service
+    get_url:
+      url: https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+      dest: "{{ containerd_service_directory.path }}/containerd.service"
+    notify: Reload containerd service
+
+  when: not containerd_binary.stat.exists or 'upgrade-containerd_packages' in ansible_run_tags
+  tags: [ install-containerd_packages, upgrade-containerd_packages, install-containerd_binaries, upgrade-containerd_binaries ]
+
+
+# runc binary
+- block:
+  - name: Get runc binary latest version
+    shell: curl -sSL https://github.com/opencontainers/runc/releases/latest | grep -o 'href="/opencontainers/runc/releases/tag/.*" ' | awk -F '/' '{ print substr($NF, 1, length($NF)-2) }'
+    register: containerd_runc_latest_version
+    changed_when: no
+  
+  - set_fact:
+      containerd_runc_version: "{{ containerd_runc_latest_version.stdout }}"
+
+  when: containerd_runc_version == ""
+  tags: [ install-containerd_packages, upgrade-containerd_packages, install-containerd_runc_binary, upgrade-containerd_runc_binary ]
+
+# Check runc binary
+- name: Check runc binary
+  stat: path="/usr/local/sbin/runc"
+  register: containerd_runc_binary
+  tags: [ install-containerd_packages, upgrade-containerd_packages, install-containerd_runc_binary, upgrade-containerd_runc_binary ]
+
+# Download runc binary
+- name: Download runc binary
+  get_url:
+    url: "https://github.com/opencontainers/runc/releases/download/{{ containerd_runc_version }}/runc.amd64"
+    dest: "/usr/local/sbin/runc"
+    mode: 0755
+  when: not containerd_runc_binary.stat.exists or 'upgrade-containerd_runc_binary' in ansible_run_tags
+  tags: [ install-containerd_packages, upgrade-containerd_packages, install-containerd_runc_binary, upgrade-containerd_runc_binary ]
+
+
+# CNI plugins
+- block:
+  - name: Get CNI plugins latest version
+    shell: curl -sSL https://github.com/containernetworking/plugins/releases/latest | grep -o 'href="/containernetworking/plugins/releases/tag/.*" ' | awk -F '/' '{ print substr($NF, 1, length($NF)-2) }'
+    register: containerd_cni_plugins_latest_version
+    changed_when: no
+
+  - set_fact:
+      containerd_cni_plugins_version: "{{ containerd_cni_plugins_latest_version.stdout }}"
+
+  when: containerd_cni_plugins_version == ""
+  tags: [ install-containerd_packages, upgrade-containerd_packages, install-containerd_cni_plugins, upgrade-containerd_cni_plugins ]
+
+# Check CNI plugins directory
+- name: Check CNI plugins directory
+  file:
+    path: "/opt/cni/bin"
+    state: directory
+    recurse: yes
+  changed_when: no
+  register: containerd_cni_plugins_directory
+  tags: [ install-containerd_packages, upgrade-containerd_packages, install-containerd_cni_plugins, upgrade-containerd_cni_plugins ]
+
+# Download CNI plugins
+- name: Download CNI plugins
+  unarchive:
+    src: "https://github.com/containernetworking/plugins/releases/download/{{ containerd_cni_plugins_version }}/cni-plugins-linux-{{ containerd_arch }}-{{ containerd_cni_plugins_version }}.tgz"
+    dest: "{{ containerd_cni_plugins_directory.path }}"
+    remote_src: yes
+  when: containerd_cni_plugins_directory.changed or ('upgrade-containerd_cni_plugins' in ansible_run_tags or 'upgrade-containerd_packages' in ansible_run_tags)
+  tags: [ install-containerd_packages, upgrade-containerd_packages, install-containerd_cni_plugins, upgrade-containerd_cni_plugins ]
