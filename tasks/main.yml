@@ -14,8 +14,8 @@
   tags: [ install-containerd, set-containerd_sysctl_params ]
 
 
-# Install containerd
-- name: Install containerd
+# Install/Upgrade containerd
+- name: Install/Upgrade containerd
   include_tasks:
     file: "roles/{{ role_name }}/tasks/containerd_packages.yml"
   tags:
@@ -27,6 +27,17 @@
     - upgrade-containerd_runc_binary
     - install-containerd_cni_plugins
     - upgrade-containerd_cni_plugins
+
+
+# Waiting for containerd post-upgrade check
+- block:
+    - ansible.builtin.meta: flush_handlers
+
+    - name: "Waiting for containerd {{ containerd_version }} post-upgrade check"
+      ansible.builtin.pause:
+        prompt: Press return to continue. Press Ctrl+c and then "a" to abort
+
+  tags: [ never, upgrade-containerd_packages ]
 
 
 # Apply containerd default configuration

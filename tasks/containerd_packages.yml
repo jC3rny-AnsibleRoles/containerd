@@ -39,7 +39,7 @@
     
   - name: Download containerd service
     get_url:
-      url: https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+      url: https://raw.githubusercontent.com/containerd/containerd/{{ containerd_version }}/containerd.service
       dest: "{{ containerd_service_directory.path }}/containerd.service"
     notify: Reload containerd service
 
